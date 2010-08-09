@@ -77,7 +77,7 @@ class UnixIteration(Iteration):
 
         python = addedopts['python'][0]
         encodepipe = pyenv + ' ' + python + \
-                     ' -m dumbo.cmd encodepipe -file ' + ' -file '.join(inputs)
+                     ' -m execmodule dumbo.cmd encodepipe -file ' + ' -file '.join(inputs)
         if addedopts['inputformat'] and addedopts['inputformat'][0] == 'code':
             encodepipe += ' -alreadycoded yes'
         if addedopts['addpath'] and addedopts['addpath'][0] != 'no':

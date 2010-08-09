@@ -115,7 +115,9 @@ def configopts(section, prog=None, opts=[]):
     from ConfigParser import SafeConfigParser, NoSectionError
     if prog:
         prog = prog.split('/')[-1]
-        prog = prog[:-3] if prog.endswith('.py') else prog
+        
+        if prog.endswith('.py'): prog = prog[:-3]
+ 
         defaults = {'prog': prog}
     else:
         defaults = {}
@@ -237,6 +239,8 @@ def getclassname(cls):
 
 
 def loadclassname(name):
-    modname, _, clsname = name.rpartition(".")
-    mod = __import__(modname, fromlist=[clsname])
+    parts = name.split('.')
+    modname = '.'.join(parts[0:-1])
+    clsname = parts[-1]
+    mod = __import__(modname, globals(), locals(), [clsname])
     return getattr(mod, clsname)

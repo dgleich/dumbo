@@ -157,7 +157,10 @@ class Iteration(object):
         else:
             self.opts.append(('hadoop', addedopts['hadoop'][0]))
         progmod = self.prog.split('/')[-1]
-        progmod = progmod[:-3] if progmod.endswith('.py') else progmod
+        
+        if progmod.endswith('.py'):
+            progmod = progmod[:-3] 
+           
         memlim = ' 262144000'  # 250MB limit by default
         if addedopts['memlimit']:
             # Limit amount of memory. This supports syntax 
