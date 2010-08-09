@@ -34,7 +34,14 @@ class StreamingBackend(Backend):
 
     def create_filesystem(self, opts):
         hadoopopt = getopt(opts, 'hadoop', delete=False)
-        return StreamingFileSystem(findhadoop(hadoopopt[0]))
+        hadoopshort = hadoopopt[0]
+        hadoopdir = findhadoop(hadoopopt[0])
+        allopts = configopts('streaming')
+        allopts += configopts('streaming_' + hadoopshort)
+        streamingjar = getopt(allopts, 'streamingjar')
+        if streamingjar:
+            streamingjar = streamingjar[0]
+        return StreamingFileSystem(hadoopdir, streamingjar)
 
 
 class StreamingIteration(Iteration):
@@ -44,6 +51,7 @@ class StreamingIteration(Iteration):
         self.opts += configopts('streaming', prog, self.opts)
         hadoop = getopt(self.opts, 'hadoop', delete=False)[0]
         self.opts += configopts('streaming_' + hadoop, prog, self.opts)
+
 
     def run(self):
         retval = Iteration.run(self)
@@ -72,7 +80,11 @@ class StreamingIteration(Iteration):
                                         'streamoutput',
                                         'pypath'])
         hadoop = findhadoop(addedopts['hadoop'][0])
-        streamingjar = findjar(hadoop, 'streaming')
+        streamingjar = getopt(self.opts,'streamingjar')
+        if streamingjar is None:
+            streamingjar = findjar(hadoop,'streaming')
+        else:
+            streamingjar = streamingjar[0]
         if not streamingjar:
             print >> sys.stderr, 'ERROR: Streaming jar not found'
             return 1
@@ -207,12 +219,16 @@ class StreamingIteration(Iteration):
 
 class StreamingFileSystem(FileSystem):
     
-    def __init__(self, hadoop):
+    def __init__(self, hadoop, streamingjar=None):
         self.hadoop = hadoop
+        self.streamingjar = streamingjar
     
     def cat(self, path, opts):
         addedopts = getopts(opts, ['libjar'], delete=False)
-        streamingjar = findjar(self.hadoop, 'streaming')
+        if self.streamingjar is None:
+            streamingjar = findjar(hadoop,'streaming')
+        else:
+            streamingjar = self.streamingjar
         if not streamingjar:
             print >> sys.stderr, 'ERROR: Streaming jar not found'
             return 1
