@@ -76,7 +76,7 @@ class UnixIteration(Iteration):
             sortbufsize = "-S %s" % addedopts['sortbufsize'][0]
 
         python = addedopts['python'][0]
-        if sys.version_info < (2,5)        
+        if sys.version_info < (2,5):       
             encodepipe = pyenv + ' ' + python + \
                      ' -m execmodule dumbo.cmd encodepipe -file ' + \
                      ' -file '.join(inputs)
