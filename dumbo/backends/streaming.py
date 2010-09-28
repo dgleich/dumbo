@@ -64,6 +64,7 @@ class StreamingIteration(Iteration):
                                         'delinputs',
                                         'libegg',
                                         'libjar',
+                                        'libjarstreaming',
                                         'inputformat',
                                         'outputformat',
                                         'nummaptasks',
@@ -186,6 +187,8 @@ class StreamingIteration(Iteration):
                        extrapaths=addedopts['pypath'])
         if pyenv:
             self.opts.append(('cmdenv', pyenv))
+        if addedopts['libjarstreaming'] and addedopts['libjarstreaming'][0] != 'no':
+            addedopts['libjar'].append(streamingjar)
         hadenv = envdef('HADOOP_CLASSPATH', addedopts['libjar'], 'libjar', 
                         self.opts, shortcuts=dict(configopts('jars', self.prog)))
         fileopt = getopt(self.opts, 'file')
