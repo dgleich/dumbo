@@ -76,8 +76,14 @@ class UnixIteration(Iteration):
             sortbufsize = "-S %s" % addedopts['sortbufsize'][0]
 
         python = addedopts['python'][0]
-        encodepipe = pyenv + ' ' + python + \
-                     ' -m execmodule dumbo.cmd encodepipe -file ' + ' -file '.join(inputs)
+        if sys.version_info < (2,5)        
+            encodepipe = pyenv + ' ' + python + \
+                     ' -m execmodule dumbo.cmd encodepipe -file ' + \
+                     ' -file '.join(inputs)
+            
+        else:
+            encodepipe = pyenv + ' ' + python + \
+                     ' -m dumbo.cmd encodepipe -file ' + ' -file '.join(inputs)
         if addedopts['inputformat'] and addedopts['inputformat'][0] == 'code':
             encodepipe += ' -alreadycoded yes'
         if addedopts['addpath'] and addedopts['addpath'][0] != 'no':
