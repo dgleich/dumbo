@@ -132,6 +132,7 @@ def run(mapper,
         reducer=None,
         combiner=None,
         buffersize=None,
+        partitioner=None,
         mapconf=None,
         redconf=None,
         combconf=None,
@@ -293,6 +294,8 @@ def run(mapper,
             opts += reducer.opts
         if type(combiner) == str:
             opts.append(('combiner', combiner))
+        if type(partitioner) == str:
+            opts.append(('partitioner', partitioner))
         opts += parseargs(sys.argv[1:])
         
         outputopt = getopt(opts, 'output', delete=False)
