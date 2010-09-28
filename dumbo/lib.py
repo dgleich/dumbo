@@ -20,6 +20,7 @@ import types
 from itertools import chain, imap, izip
 from math import sqrt
 from copy import copy
+from operator import itemgetter
 
 from dumbo.util import loadclassname
 
@@ -235,3 +236,4 @@ class JoinReducer(JoinCombiner):
     def secondary_blocked(self, body):
         return self._key != body
 
+prefixgrouper = itemgetter(0)

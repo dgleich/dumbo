@@ -133,6 +133,7 @@ def run(mapper,
         combiner=None,
         buffersize=None,
         partitioner=None,
+        grouper=None,
         mapconf=None,
         redconf=None,
         combconf=None,
@@ -224,6 +225,8 @@ def run(mapper,
                     if os.environ.has_key('dumbo_joinkeys'):
                         outputs = iterreduce(inputs, combiner,
                                              keyfunc=jk_class.fromjoinkey)
+                    elif grouper is not None:
+                        outputs = iterreduce(inputs, combiner, grouper=grouper)
                     else:
                         outputs = iterreduce(inputs, combiner)
                 if os.environ.has_key('dumbo_joinkeys'):
@@ -265,6 +268,8 @@ def run(mapper,
                     outputs = iterreduce(inputs, reducer,
                                          keyfunc=jk_class.fromdump)
                     outputs = ((jk.body, v) for (jk, v) in outputs)
+                elif grouper is not None:
+                    outputs = iterreduce(inputs, reducer, grouper=grouper)
                 else:
                     outputs = iterreduce(inputs, reducer)
                 if os.environ.has_key('stream_reduce_output') and \
@@ -392,9 +397,16 @@ def redfunc_iter(data, redfunc):
         for output in redfunc(key, values):
             yield output
 
+def grouped_itemgetter(grouper,item):    
+    def g(obj):
+        return grouper(obj[item])
+    return g
 
-def iterreduce(data, redfunc, keyfunc=None):
-    data = groupby(data, itemgetter(0))
+def iterreduce(data, redfunc, keyfunc=None, grouper=None):
+    if grouper is None:
+        data = groupby(data, itemgetter(0))
+    else:
+        data = groupby(data, grouped_itemgetter(grouper, 0))
     data = ((key, (v[1] for v in values)) for key, values in data)
     if keyfunc:
         data = ((keyfunc(key), values) for key, values in data)
