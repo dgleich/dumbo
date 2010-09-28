@@ -82,7 +82,7 @@ class StreamingIteration(Iteration):
                                         'pypath'])
         hadoop = findhadoop(addedopts['hadoop'][0])
         streamingjar = getopt(self.opts,'streamingjar')
-        if streamingjar is None:
+        if streamingjar is None or len(streamingjar)==0:
             streamingjar = findjar(hadoop,'streaming')
         else:
             streamingjar = streamingjar[0]
@@ -228,8 +228,8 @@ class StreamingFileSystem(FileSystem):
     
     def cat(self, path, opts):
         addedopts = getopts(opts, ['libjar'], delete=False)
-        if self.streamingjar is None:
-            streamingjar = findjar(hadoop,'streaming')
+        if self.streamingjar is None or len(self.streamingjar)==0:
+            streamingjar = findjar(self.hadoop,'streaming')
         else:
             streamingjar = self.streamingjar
         if not streamingjar:
