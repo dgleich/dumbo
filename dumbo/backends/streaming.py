@@ -64,6 +64,7 @@ class StreamingIteration(Iteration):
                                         'delinputs',
                                         'libegg',
                                         'libjar',
+                                        'libjarstreaming',
                                         'inputformat',
                                         'outputformat',
                                         'nummaptasks',
@@ -81,7 +82,7 @@ class StreamingIteration(Iteration):
                                         'pypath'])
         hadoop = findhadoop(addedopts['hadoop'][0])
         streamingjar = getopt(self.opts,'streamingjar')
-        if streamingjar is None:
+        if streamingjar is None or len(streamingjar)==0:
             streamingjar = findjar(hadoop,'streaming')
         else:
             streamingjar = streamingjar[0]
@@ -186,6 +187,8 @@ class StreamingIteration(Iteration):
                        extrapaths=addedopts['pypath'])
         if pyenv:
             self.opts.append(('cmdenv', pyenv))
+        if addedopts['libjarstreaming'] and addedopts['libjarstreaming'][0] != 'no':
+            addedopts['libjar'].append(streamingjar)
         hadenv = envdef('HADOOP_CLASSPATH', addedopts['libjar'], 'libjar', 
                         self.opts, shortcuts=dict(configopts('jars', self.prog)))
         fileopt = getopt(self.opts, 'file')
@@ -225,8 +228,8 @@ class StreamingFileSystem(FileSystem):
     
     def cat(self, path, opts):
         addedopts = getopts(opts, ['libjar'], delete=False)
-        if self.streamingjar is None:
-            streamingjar = findjar(hadoop,'streaming')
+        if self.streamingjar is None or len(self.streamingjar)==0:
+            streamingjar = findjar(self.hadoop,'streaming')
         else:
             streamingjar = self.streamingjar
         if not streamingjar:
