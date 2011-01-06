@@ -89,6 +89,8 @@ class StreamingIteration(Iteration):
         if not streamingjar:
             print >> sys.stderr, 'ERROR: Streaming jar not found'
             return 1
+            
+        # add typedbytes to path
         try: 
             import typedbytes
         except ImportError:
@@ -99,6 +101,18 @@ class StreamingIteration(Iteration):
             addedopts['libegg'].append(modpath)    
         else:
             self.opts.append(('file', modpath)) 
+            
+        # add ctypedbytes to job
+        try: 
+            import ctypedbytes
+            print >>sys.stderr, 'INFO: "ctypedbytes" found!'
+            modpath = re.sub('\.egg.*$', '.egg', ctypedbytes.__file__)
+            if modpath.endswith('.egg'):            
+                addedopts['libegg'].append(modpath)
+        except ImportError:
+            pass        
+            
+            
         self.opts.append(('jobconf', 'stream.map.input=typedbytes'))
         self.opts.append(('jobconf', 'stream.reduce.input=typedbytes'))
         if addedopts['numreducetasks'] and addedopts['numreducetasks'][0] == '0':
@@ -216,7 +230,7 @@ class StreamingIteration(Iteration):
         if addedopts['delinputs'] and addedopts['delinputs'][0] == 'yes':
             for (key, value) in self.opts:
                 if key == 'input':
-                    execute("%s/bin/hadoop dfs -rmr '%s'" % (hadoop, value))
+                    execute("%s/bin/hadoop fs -rmr '%s'" % (hadoop, value))
         return retval
 
 
@@ -239,7 +253,7 @@ class StreamingFileSystem(FileSystem):
                         shortcuts=dict(configopts('jars')))
         try:
             import typedbytes
-            ls = os.popen('%s %s/bin/hadoop dfs -ls %s' % (hadenv, self.hadoop, path))
+            ls = os.popen('%s %s/bin/hadoop fs -ls %s' % (hadenv, self.hadoop, path))
             if sum(c in path for c in ("*", "?", "{")) > 0:
                 # cat each file separately when the path contains special chars
                 lineparts = (line.split()[-1] for line in ls)
@@ -264,21 +278,21 @@ class StreamingFileSystem(FileSystem):
         return 0
     
     def ls(self, path, opts):
-        return execute("%s/bin/hadoop dfs -ls '%s'" % (self.hadoop, path),
+        return execute("%s/bin/hadoop fs -ls '%s'" % (self.hadoop, path),
                        printcmd=False)
     
     def exists(self, path, opts):
-        shellcmd = "%s/bin/hadoop dfs -stat '%s' >/dev/null 2>&1"
+        shellcmd = "%s/bin/hadoop fs -stat '%s' >/dev/null 2>&1"
         return 1 - int(execute(shellcmd % (self.hadoop, path), printcmd=False) == 0)
     
     def rm(self, path, opts):
-        return execute("%s/bin/hadoop dfs -rmr '%s'" % (self.hadoop, path),
+        return execute("%s/bin/hadoop fs -rmr '%s'" % (self.hadoop, path),
                        printcmd=False)
     
     def put(self, path1, path2, opts):
-        return execute("%s/bin/hadoop dfs -put '%s' '%s'" % (self.hadoop, path1,
+        return execute("%s/bin/hadoop fs -put '%s' '%s'" % (self.hadoop, path1,
                        path2), printcmd=False)
     
     def get(self, path1, path2, opts):
-        return execute("%s/bin/hadoop dfs -get '%s' '%s'" % (self.hadoop, path1,
+        return execute("%s/bin/hadoop fs -get '%s' '%s'" % (self.hadoop, path1,
                        path2), printcmd=False)

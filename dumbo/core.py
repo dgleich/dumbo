@@ -183,7 +183,9 @@ def run(mapper,
                 if os.environ.has_key('stream_map_input') and \
                 os.environ['stream_map_input'].lower() == 'typedbytes':
                     print >> sys.stderr, "INFO: inputting typed bytes"
-                    try: import ctypedbytes as typedbytes
+                    try: 
+                        import ctypedbytes as typedbytes
+                        print >> sys.stderr, "INFO: using ctypedbytes"
                     except ImportError: import typedbytes
                     inputs = typedbytes.PairedInput(sys.stdin).reads()
                 else:
@@ -234,7 +236,9 @@ def run(mapper,
                 if os.environ.has_key('stream_map_output') and \
                 os.environ['stream_map_output'].lower() == 'typedbytes':
                     print >> sys.stderr, "INFO: outputting typed bytes"
-                    try: import ctypedbytes as typedbytes
+                    try: 
+                        import ctypedbytes as typedbytes
+                        print >> sys.stderr, "INFO: using ctypedbytes"
                     except ImportError: import typedbytes
                     typedbytes.PairedOutput(sys.stdout).writes(outputs)
                 else:
@@ -257,7 +261,9 @@ def run(mapper,
                 if os.environ.has_key('stream_reduce_input') and \
                 os.environ['stream_reduce_input'].lower() == 'typedbytes':
                     print >> sys.stderr, "INFO: inputting typed bytes"
-                    try: import ctypedbytes as typedbytes
+                    try: 
+                        import ctypedbytes as typedbytes
+                        print >> sys.stderr, "INFO: using ctypedbytes"
                     except ImportError: import typedbytes
                     inputs = typedbytes.PairedInput(sys.stdin).reads()
                 else:
@@ -275,7 +281,9 @@ def run(mapper,
                 if os.environ.has_key('stream_reduce_output') and \
                 os.environ['stream_reduce_output'].lower() == 'typedbytes':
                     print >> sys.stderr, "INFO: outputting typed bytes"
-                    try: import ctypedbytes as typedbytes
+                    try: 
+                        import ctypedbytes as typedbytes
+                        print >> sys.stderr, "INFO: using ctypedbytes"
                     except ImportError: import typedbytes
                     typedbytes.PairedOutput(sys.stdout).writes(outputs)
                 else:
