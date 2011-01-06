@@ -36,14 +36,97 @@ class Job(object):
     
     def __init__(self):
         self.iters = []
-
+        self.deps = {}  # will contain last dependency for each node
+        self.root = -1  # id for the job's root input
+    
     def additer(self, *args, **kwargs):
+        kwargs.setdefault('input', len(self.iters)-1)
+        input = kwargs['input']
+        if type(input) == int:
+            input = [input]
+
         self.iters.append((args, kwargs))
+        iter = len(self.iters)-1
+
+        for initer in input:
+            self.deps[initer] = iter
+
+        return iter
 
     def run(self):
-        for (index, (args, kwargs)) in enumerate(self.iters):
-            (kwargs['iter'], kwargs['itercnt']) = (index, len(self.iters))
-            run(*args, **kwargs)
+        for (iter, (args, kwargs)) in enumerate(self.iters):
+            kwargs['iter'] = iter
+                
+            if len(sys.argv) > 1 and not sys.argv[1][0] == '-':
+                run(*args, **kwargs)
+            else:
+                opts = kwargs.get('opts', [])
+                opts += parseargs(sys.argv[1:])
+
+                preoutputsopt = getopt(opts, 'preoutputs')
+                delinputsopt = getopt(opts, 'delinputs')
+                addpathopt = getopt(opts, 'addpath', delete=False)
+                getpathopt = getopt(opts, 'getpath', delete=False)
+
+                job_inputs = getopt(opts, 'input', delete=False)
+                if not job_inputs:
+                    print >> sys.stderr, 'ERROR: No input path specified'
+                    sys.exit(1)
+
+                outputopt = getopt(opts, 'output', delete=False)
+                if not outputopt:
+                    print >> sys.stderr, 'ERROR: No output path specified'
+                    sys.exit(1)
+                job_output = outputopt[0]
+
+                newopts = {}
+                newopts['iteration'] = str(iter)
+                newopts['itercount'] = str(len(self.iters))
+
+                input = kwargs['input']
+                if type(input) == int:
+                    input = [input]
+                if input == [-1]:
+                    kwargs['input'] = job_inputs
+                    if delinputsopt and delinputsopt[0] == 'yes' and iter == self.deps[-1]:
+                        newopts['delinputs'] = 'yes'
+                    else:
+                        newopts['delinputs'] = 'no'
+                else:
+                    if -1 in input:
+                        print >> sys.stderr, 'ERROR: Cannot mix job input with intermediate results'
+                        sys.exit(1)
+                    kwargs['input'] = [job_output + "_pre" + str(initer + 1) for initer in input]
+                    newopts['inputformat'] = 'code'
+                    if addpathopt and addpathopt[0] == 'yes':  # not when == 'iter'
+                        newopts['addpath'] = 'no'
+                    newopts['delinputs'] = 'no' # we'll take care of it ourselves
+
+                if iter == len(self.iters) - 1:
+                    kwargs['output'] = job_output
+                else:
+                    kwargs['output'] = job_output + "_pre" + str(iter + 1)
+                    newopts['outputformat'] = 'code'
+                    if getpathopt and getpathopt[0] == 'yes':  # not when == 'iter'
+                        newopts['getpath'] = 'no'
+
+                (key, delindexes) = (None, [])
+                for (index, (key, value)) in enumerate(opts):
+                    if newopts.has_key(key):
+                        delindexes.append(index)
+                for delindex in reversed(delindexes):
+                    del opts[delindex]
+                opts += newopts.iteritems()
+                kwargs['opts'] = opts
+
+                run(*args, **kwargs)
+
+                backend = get_backend(opts)
+                fs = backend.create_filesystem(opts)
+                if not (preoutputsopt and preoutputsopt[0] == 'yes') and input != [-1]:
+                    for initer in input:
+                        if iter == self.deps[initer]:
+                            fs.rm(job_output + "_pre" + str(initer + 1), opts)
 
 
 class Program(object):
@@ -141,8 +224,9 @@ def run(mapper,
         redclose=None,
         combclose=None,
         opts=None,
-        iter=0,
-        itercnt=1):
+        input=None,
+        output=None,
+        iter=0):
     if len(sys.argv) > 1 and not sys.argv[1][0] == '-':
         iterarg = 0  # default value
         if len(sys.argv) > 2:
@@ -154,6 +238,7 @@ def run(mapper,
             
         mrbase_class = loadclassname(os.environ['dumbo_mrbase_class'])
         jk_class = loadclassname(os.environ['dumbo_jk_class'])
+        runinfo = loadclassname(os.environ['dumbo_runinfo_class'])()
         
         if iterarg == iter:
             if sys.argv[1].startswith('map'):
@@ -195,7 +280,7 @@ def run(mapper,
                 if combconf:
                     combconf()
                 if os.environ.has_key('dumbo_addpath'):
-                    path = os.environ['map_input_file']
+                    path = runinfo.get_input_path()
                     inputs = (((path, k), v) for (k, v) in inputs)
                 if os.environ.has_key('dumbo_joinkeys'):
                     inputs = ((jk_class(k), v) for (k, v) in inputs)
@@ -310,34 +395,25 @@ def run(mapper,
         if type(partitioner) == str:
             opts.append(('partitioner', partitioner))
         opts += parseargs(sys.argv[1:])
+
+        if input is not None:
+            getopt(opts, 'input', delete=True)  # delete -input opts
+            for infile in input:
+                opts.append(('input', infile))
         
-        outputopt = getopt(opts, 'output', delete=False)
-        if not outputopt:
-            print >> sys.stderr, 'ERROR: No output path specified'
-            sys.exit(1)
-        output = outputopt[0]
-        
+        if output is None:
+            outputopt = getopt(opts, 'output', delete=False)
+            if not outputopt:
+                print >> sys.stderr, 'ERROR: No output path specified'
+                sys.exit(1)
+            output = outputopt[0]
+
         newopts = {}
-        newopts['iteration'] = str(iter)
-        newopts['itercount'] = str(itercnt)
-        preoutputsopt = getopt(opts, 'preoutputs')
-        addpathopt = getopt(opts, 'addpath', delete=False)
-        getpathopt = getopt(opts, 'getpath', delete=False)
-        if iter != 0:
-            newopts['input'] = output + "_pre" + str(iter)
-            if not (preoutputsopt and preoutputsopt[0] == 'yes'):
-                newopts['delinputs'] = 'yes'
-            newopts['inputformat'] = 'code'
-            if addpathopt and addpathopt[0] == 'yes':  # not when == 'iter'
-                newopts['addpath'] = 'no'
-        if iter < itercnt - 1:
-            output += "_pre" + str(iter + 1)
-            newopts['output'] = output
-            newopts['outputformat'] = 'code'
-            if getpathopt and getpathopt[0] == 'yes':  # not when == 'iter'
-                newopts['getpath'] = 'no'
+
+        newopts['output'] = output
         if not reducer:
             newopts['numreducetasks'] = '0'
+
         (key, delindexes) = (None, [])
         for (index, (key, value)) in enumerate(opts):
             if newopts.has_key(key):
@@ -361,7 +437,9 @@ def run(mapper,
         opts.append(('cmdenv', 'dumbo_mrbase_class=' + \
                      getclassname(backend.get_mapredbase_class(opts))))
         opts.append(('cmdenv', 'dumbo_jk_class=' + \
-                     getclassname(backend.get_joinkey_class(opts))))                  
+                     getclassname(backend.get_joinkey_class(opts))))
+        opts.append(('cmdenv', 'dumbo_runinfo_class=' + \
+                     getclassname(backend.get_runinfo_class(opts))))
         retval = backend.create_iteration(opts).run()
         if retval == 127:
             print >> sys.stderr, 'ERROR: Are you sure that "python" is on your path?'
