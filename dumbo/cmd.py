@@ -26,6 +26,7 @@ def dumbo():
         print 'Usages:'
         print '  dumbo start <python program> [<options>]'
         print '  dumbo cat <path> [<options>]'
+        print '  dumbo convert <python program|module> <path> [<options>]'
         print '  dumbo ls <path> [<options>]'
         print '  dumbo exists <path> [<options>]'
         print '  dumbo rm <path> [<options>]'
@@ -39,6 +40,8 @@ def dumbo():
         retval = start(sys.argv[2], parseargs(sys.argv[2:]))
     elif sys.argv[1] == 'cat':
         retval = cat(sys.argv[2], parseargs(sys.argv[2:]))
+    elif sys.argv[1] == 'convert':
+        retval = convert(sys.argv[2], sys.argv[3], parseargs(sys.argv[3:]))
     elif sys.argv[1] == 'ls':
         retval = ls(sys.argv[2], parseargs(sys.argv[2:]))
     elif sys.argv[1] == 'exists':
@@ -92,6 +95,44 @@ def cat(path, opts):
     opts += configopts('common')
     opts += configopts('cat')
     return create_filesystem(opts).cat(path, opts)
+    
+def convert(prog, path, opts):
+    opts += configopts('common')
+    opts += configopts('convert')
+    
+    addedopts = getopts(opts, ['libegg'], delete=False)
+    pyenv = envdef('PYTHONPATH', addedopts['libegg'],
+                   shortcuts=dict(configopts('eggs', prog)),
+                   extrapaths=sys.path)
+    
+    # add eggs to path
+    newpath = resolved_files(addedopts['libegg'], 
+                    shortcuts=dict(configopts('eggs',prog)))
+    newpath.extend(sys.path)
+    
+    sys.path = newpath
+    
+    if not getopt(opts, 'prog', delete=False):
+        opts.append(('prog', prog))
+    
+    # try importing this as a module
+    import imp
+    try:
+        module = imp.load_source('dumbo.converter',prog)
+    except ImportError:
+        if not os.path.exists(prog):
+            print >> sys.stderr, 'ERROR:', prog, 'does not exist'
+        else:
+            print >> sys.stderr, 'ERROR: cannot import', prog
+        return 1
+    
+    try:
+        conv = module.Converter(opts)
+    except AttributeError:
+        print >> sys.stderr, 'ERROR:', prog, 'does not have a converter class'
+        return 1
+        
+    return create_filesystem(opts).convert(path, opts, conv)
 
 
 def ls(path, opts):
@@ -156,6 +197,18 @@ def decodepipe(opts=[]):
             print '\t'.join(output)
         file.close()
         return 0
+        
+def convertpipe(converter,opts=[]):
+    addedopts = getopts(opts, ['file'])
+    if addedopts['file']:
+        files = (open(f) for f in addedopts['file'])
+    else:
+        files = [sys.stdin]
+    for file in files:
+        outputs = loadcode(line[:-1] for line in file)
+        converter(outputs)
+        file.close()
+        return 0        
 
 
 def doctest(prog):

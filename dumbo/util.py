@@ -410,6 +410,24 @@ def findjar(hadoop, name):
     return None
 
 
+def resolved_files(files,shortcuts={},trim=False):
+    rfiles = []
+    for file in files:
+        if shortcuts.has_key(file.lower()):
+            file = shortcuts[file.lower()]
+        if file.startswith('path://'):
+            pathvals.append(file[7:])
+        else:
+            if not '://' in file:
+                if not os.path.exists(file):
+                    raise ValueError('file "' + file + '" does not exist')
+                file = 'file://' + os.path.abspath(file)
+            if not trim:
+                rfiles.append(file.split('://', 1)[1])
+            else:
+                rfiles.append(file.split('/')[-1])
+    return rfiles
+
 def envdef(varname,
            files,
            optname=None,

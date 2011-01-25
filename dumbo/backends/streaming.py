@@ -251,7 +251,7 @@ class StreamingFileSystem(FileSystem):
         else:
             self.hdfs = hadoop + "/bin/hadoop"
     
-    def cat(self, path, opts):
+    def _cat(self, path, opts, func, outputs=False):
         addedopts = getopts(opts, ['libjar'], delete=False)
         if self.streamingjar is None or len(self.streamingjar)==0:
             streamingjar = findjar(self.hadoop,'streaming')
@@ -278,18 +278,29 @@ class StreamingFileSystem(FileSystem):
                     continue
                 dumptb = os.popen('%s %s/bin/hadoop jar %s dumptb %s 2> /dev/null'
                                   % (hadenv, self.hadoop, streamingjar, subpath))
-                ascodeopt = getopt(opts, 'ascode')
-                if ascodeopt and ascodeopt[0] == 'yes':
-                    outputs = dumpcode(typedbytes.PairedInput(dumptb))
+                
+                if outputs:
+                    outs = func(typedbytes.PairedInput(dumptb))
+                    for output in outs:
+                        print '\t'.join(output)
                 else:
-                    outputs = dumptext(typedbytes.PairedInput(dumptb))
-                for output in outputs:
-                    print '\t'.join(output)
+                    func(typedbytes.PairedInput(dumptb))
+                    
                 dumptb.close()
         except IOError:
             pass  # ignore
         return 0
     
+    def cat(self, path, opts):
+        ascodeopt = getopt(opts, 'ascode')
+        if ascodeopt and ascodeopt[0] == 'yes':
+            return self._cat(path, opts, dumpcode)
+        else:
+            return self._cat(path, opts, dumptext)
+        
+    def convert(self, path, opts, func):
+        return self._cat(path, opts, func)
+        
     def ls(self, path, opts):
         return execute("%s dfs -ls '%s'" % (self.hdfs, path),
                        printcmd=False)

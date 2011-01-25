@@ -120,6 +120,9 @@ class UnixFileSystem(FileSystem):
     
     def cat(self, path, opts):
         return decodepipe(opts + [('file', path)])
+        
+    def convert(self, path, opts, func):
+        return convertpipe(func, opts + [('file', path)])
     
     def ls(self, path, opts):
         return execute("ls -l '%s'" % path, printcmd=False)
