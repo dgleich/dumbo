@@ -296,9 +296,9 @@ class StreamingFileSystem(FileSystem):
     def cat(self, path, opts):
         ascodeopt = getopt(opts, 'ascode')
         if ascodeopt and ascodeopt[0] == 'yes':
-            return self._cat(path, opts, dumpcode)
+            return self._cat(path, opts, dumpcode, True)
         else:
-            return self._cat(path, opts, dumptext)
+            return self._cat(path, opts, dumptext, True)
         
     def convert(self, path, opts, func):
         return self._cat(path, opts, func)

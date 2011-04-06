@@ -294,7 +294,7 @@ def loadtext(inputs):
 def parseargs(args):
     (opts, key, values) = ([], None, [])
     for arg in args:
-        if arg[0] == '-' and len(arg) > 1:
+        if len(arg) > 1 and arg[0] == '-':
             if key:
                 opts.append((key, ' '.join(values)))
             (key, values) = (arg[1:], [])
