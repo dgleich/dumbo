@@ -70,6 +70,7 @@ def start(prog,
           opts,
           stdout=sys.stdout,
           stderr=sys.stderr):
+        
     opts += configopts('common')
     opts += configopts('start')
     addedopts = getopts(opts, ['libegg'], delete=False)

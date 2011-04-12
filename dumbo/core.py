@@ -33,7 +33,6 @@ class Error(Exception):
 
 
 class Job(object):
-    
     def __init__(self):
         self.iters = []
         self.deps = {}  # will contain last dependency for each node
@@ -170,8 +169,14 @@ def main(runner, starter=None, variator=None):
     opts = parseargs(sys.argv[1:])
     starteropt = getopts(opts, ['starter'])['starter']
     opts.append(('starter', 'no'))
+    
+    
+    
     if starter and not (starteropt and starteropt[0] == 'no') \
     and not (len(sys.argv) > 1 and sys.argv[1][0] != '-'):
+        
+        #print >>sys.stderr, "Beginning dumbo.core.py::main with starter"
+        
         progopt = getopt(opts, 'prog')
         if not progopt:
             program = Program(sys.argv[0], opts)
@@ -204,6 +209,9 @@ def main(runner, starter=None, variator=None):
             print >> sys.stderr, "ERROR: " + str(e)
             sys.exit(1)
     else:
+        
+        #print >>sys.stderr, "Beginning dumbo.core.py::main without starter"
+        
         job = Job()
         errormsg = runner(job)
         if errormsg:
@@ -227,8 +235,13 @@ def run(mapper,
         opts=None,
         input=None,
         output=None,
+        premapper=None,
+        postreducer=None,
         iter=0):
+
     if len(sys.argv) > 1 and not sys.argv[1][0] == '-':
+        # This case corresponds to running a mapper or reducer
+        
         iterarg = 0  # default value
         if len(sys.argv) > 2:
             iterarg = int(sys.argv[2])
@@ -381,6 +394,7 @@ def run(mapper,
                 for output in dumpcode(inputs):
                     print '\t'.join(output)
     else:
+        # This case builds the hadoop streaming command to run
         if not opts:
             opts = []
         if type(mapper) == str:
@@ -434,19 +448,34 @@ def run(mapper,
         elif checkoutput and fs.exists(output, opts) == 0:
             print >> sys.stderr, 'ERROR: Output path exists already: %s' % output
             sys.exit(1)
-        
+            
         opts.append(('cmdenv', 'dumbo_mrbase_class=' + \
                      getclassname(backend.get_mapredbase_class(opts))))
         opts.append(('cmdenv', 'dumbo_jk_class=' + \
                      getclassname(backend.get_joinkey_class(opts))))
         opts.append(('cmdenv', 'dumbo_runinfo_class=' + \
                      getclassname(backend.get_runinfo_class(opts))))
+        
+        # The function of the premapper is like a starter before a
+        # particular map reduce job.  It'll allow you to get the 
+        # file system into the right state.
+        if premapper is not None:
+            # TODO Think if these are the right options
+            premapper(backend, fs, opts)
+                     
         retval = backend.create_iteration(opts).run()
         if retval == 127:
             print >> sys.stderr, 'ERROR: Are you sure that "python" is on your path?'
+            
         if retval != 0:
             sys.exit(retval)
 
+        # The function of the post-mapper is to do post-processing 
+        # on the output of the MapReduce iteration
+        if postreducer is not None:
+            # TODO Think if these are the right options
+            postreducer(backend, fs, opts)
+            
 
 def valwrapper(data, valfunc):
     MAX_LOGGED_BADVALUES = 500
